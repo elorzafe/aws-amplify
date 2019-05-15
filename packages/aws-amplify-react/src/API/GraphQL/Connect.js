@@ -37,8 +37,8 @@ export default class Connect extends Component {
         this.setState({ loading: true });
 
         const {
-            query: { query, variables = {} } = {},
-            mutation: { query: mutation, mutationVariables = {} } = {},
+            query: { query, variables = {}, authMode } = {},
+            mutation: { query: mutation, authMode: mutationAuthMode } = {},
             subscription,
             onSubscriptionMsg = (prevData) => prevData,
         } = this.props;
@@ -61,7 +61,7 @@ export default class Connect extends Component {
             try {
                 data = null;
 
-                const response = await API.graphql({ query, variables });
+                const response = await API.graphql({ query, variables, authMode });
 
                 data = response.data;
             } catch (err) {
@@ -72,7 +72,7 @@ export default class Connect extends Component {
 
         if (hasValidMutation) {
             mutationProp = async (variables) => {
-                const result = await API.graphql({ query: mutation, variables });
+                const result = await API.graphql({ query: mutation, variables, authMode: mutationAuthMode });
 
                 this.forceUpdate();
                 return result;
@@ -80,10 +80,10 @@ export default class Connect extends Component {
         }
 
         if (hasValidSubscription) {
-            const { query: subsQuery, variables: subsVars } = subscription;
+            const { query: subsQuery, variables: subsVars, authMode: subsAuthMode } = subscription;
 
             try {
-                const observable = API.graphql({ query: subsQuery, variables: subsVars });
+                const observable = API.graphql({ query: subsQuery, variables: subsVars, authMode: subsAuthMode });
 
                 this.subSubscription = observable.subscribe({
                     next: ({ value: { data } }) => {
@@ -122,23 +122,27 @@ export default class Connect extends Component {
     componentDidUpdate(prevProps) {
         const { loading } = this.state;
 
-        const { query: newQueryObj, mutation: newMutationObj } = this.props;
-        const { query: prevQueryObj, mutation: prevMutationObj } = prevProps;
+        const { query: newQueryObj, subscription: newSubscriptionObj } = this.props;
+        const { query: prevQueryObj, subscription: prevSubscriptionObj } = prevProps;
 
         // query
-        const { query: newQuery, variables: newQueryVariables } = newQueryObj || {};
-        const { query: prevQuery, variables: prevQueryVariables } = prevQueryObj || {};
+        const { query: newQuery, variables: newQueryVariables, authMode: newQueryAuthMode } = newQueryObj || {};
+        const { query: prevQuery, variables: prevQueryVariables, authMode: prevQueryAuthMode } = prevQueryObj || {};
         const queryChanged =
-            prevQuery !== newQuery || JSON.stringify(prevQueryVariables) !== JSON.stringify(newQueryVariables);
+            prevQuery !== newQuery || JSON.stringify(prevQueryVariables) !== JSON.stringify(newQueryVariables) ||
+            newQueryAuthMode !== prevQueryAuthMode;
 
-        // mutation
-        const { query: newMutation, variables: newMutationVariables } = newMutationObj || {};
-        const { query: prevMutation, variables: prevMutationVariables } = prevMutationObj || {};
-        const mutationChanged =
-            prevMutation !== newMutation
-            || JSON.stringify(prevMutationVariables) !== JSON.stringify(newMutationVariables);
+        // subscription
+        const { query: newSubscription, variables: newSubscriptionVariables, authMode: newSubscriptionAuthMode } =
+            newSubscriptionObj || {};
+        const { query: prevSubscription, variables: prevSubscriptionVariables, authMode: prevSubscriptionAuthMode } =
+            prevSubscriptionObj || {};
+        const subscriptionChanged =
+            prevSubscription !== newSubscription
+            || JSON.stringify(prevSubscriptionVariables) !== JSON.stringify(newSubscriptionVariables) ||
+            newSubscriptionAuthMode !== prevSubscriptionAuthMode;
 
-        if (!loading && (queryChanged || mutationChanged)) {
+        if (!loading && (queryChanged || subscriptionChanged)) {
             this._fetchData();
         }
     }
