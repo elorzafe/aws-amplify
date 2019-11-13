@@ -13,3 +13,9 @@ export interface ICredentials {
 	identityId: string;
 	authenticated: boolean;
 }
+
+export type DelayFunction = (
+	attempt: number,
+	args?: any[],
+	error?: Error
+) => number | false;
